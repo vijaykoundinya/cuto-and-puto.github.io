@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Our Story 💖</title>
+
+<!-- 📱 Mobile friendly -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<style>
+body {
+  margin: 0;
+  background: #ffe6eb;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.game {
+  background: #ffccd5;
+  padding: 16px;
+  border-radius: 20px;
+  width: 92vw;
+  max-width: 360px;
+  touch-action: none;
+}
+
+h1 {
+  text-align: center;
+  color: #b3003b;
+  margin-bottom: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.cell {
+  aspect-ratio: 1 / 1;
+  background: #ffd6e0;
+  border-radius: 14px;
+  font-size: 8vw;
+  max-font-size: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 💬 Memory Modal */
+#memoryModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modalContent {
+  background: #fff0f5;
+  padding: 18px;
+  border-radius: 16px;
+  max-width: 320px;
+  text-align: center;
+}
+
+.modalContent img {
+  width: 100%;
+  max-height: 45vh;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.modalContent p {
+  font-size: 17px;
+}
+
+.modalContent button {
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: #ff4d6d;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+/* 💍 Final Screen */
+#finalScreen {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #ffccd5;
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+}
+
+#finalScreen h2 {
+  font-size: 30px;
+  color: #b3003b;
+}
+
+#finalScreen p {
+  font-size: 20px;
+  margin-top: 12px;
+}
+
+/* 🎵 Music Button */
+#musicToggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  background: #ff4d6d;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 14px;
+  font-size: 14px;
+  z-index: 2000;
+}
+</style>
+</head>
+
+<body>
+
+<div class="game">
+  <h1>Our Story 💖</h1>
+  <div class="grid" id="grid"></div>
+</div>
+
+<!-- 💬 Memory Popup -->
+<div id="memoryModal">
+  <div class="modalContent">
+    <img id="memoryImg">
+    <p id="memoryText"></p>
+    <button onclick="closeModal()">Continue 💖</button>
+  </div>
+</div>
+
+<!-- 💍 Final Screen -->
+<div id="finalScreen">
+  <div>
+    <h2>💍 Will you be my Valentine?</h2>
+    <p>I choose you. Always.</p>
+  </div>
+</div>
+
+<!-- 🎵 Background Music -->
+<audio id="bgMusic" loop>
+  <source src="audio/music.mp3" type="audio/mpeg">
+</audio>
+<button id="musicToggle">🔈 Music</button>
+
+<script>
+/* =========================
+   ✏️ EDIT YOUR STORY HERE
+   ========================= */
+
+const memories = {
+  2:   { text: "😊 Our first picture together", img: "images/1.jpeg" },
+  4:   { text: "😂 When walking became the norm", img: "images/2.jpeg" },
+  8:   { text: "😘 Starting a new chapter", img: "images/3.jpeg" },
+  16:  { text: "😍 New York", img: "images/4.jpeg" },
+  32:  { text: "💕 The picture that changed everything", img: "images/5.jpeg" },
+  64:  { text: "❤️ Our first official date.", img: "images/6.jpeg" },
+  128: { text: "💖 Snowwwwwwwwwwwww", img: "images/7.jpeg" },
+  256: { text: "💗 Choosing each other.", img: "images/8.jpeg" },
+  512: { text: "💝 end of an era, Graduation :))).", img: "images/9.jpeg" },
+  1024:{ text: "💌 Orlandooooooo", img: "images/10.jpeg" },
+  2048:{ text: "💍 And you flew back to india", img: "images/11.jpeg" }
+};
+
+const emojis = {
+  2:"😊",4:"😂",8:"😘",16:"😍",32:"💕",
+  64:"❤️",128:"💖",256:"💗",512:"💝",1024:"💌",2048:"💍"
+};
+
+/* =========================
+   ⚙️ Game Engine
+   ========================= */
+
+const size = 4;
+let board = Array(16).fill(0);
+let modalOpen = false;
+const shown = new Set();
+const grid = document.getElementById("grid");
+
+function drawBoard() {
+  grid.innerHTML = "";
+  board.forEach(v => {
+    const cell = document.createElement("div");
+    cell.className = "cell";
+    cell.textContent = emojis[v] || "";
+    grid.appendChild(cell);
+  });
+}
+
+function addTile() {
+  const empty = board.map((v,i)=>v===0?i:null).filter(i=>i!==null);
+  if (!empty.length) return;
+  board[empty[Math.floor(Math.random()*empty.length)]] = 2;
+}
+
+function slide(row) {
+  row = row.filter(v=>v);
+  for (let i=0;i<row.length-1;i++) {
+    if (row[i]===row[i+1]) {
+      row[i]*=2;
+      showMemory(row[i]);
+      row[i+1]=0;
+    }
+  }
+  return row.filter(v=>v);
+}
+
+function moveLeft() {
+  for (let r=0;r<4;r++) {
+    let row = board.slice(r*4,r*4+4);
+    row = slide(row);
+    while (row.length<4) row.push(0);
+    board.splice(r*4,4,...row);
+  }
+}
+
+function rotate(times){
+  for(let t=0;t<times;t++){
+    let n=Array(16).fill(0);
+    for(let r=0;r<4;r++)
+      for(let c=0;c<4;c++)
+        n[c*4+3-r]=board[r*4+c];
+    board=n;
+  }
+}
+
+function moveRight(){rotate(2);moveLeft();rotate(2);}
+function moveUp(){rotate(3);moveLeft();rotate(1);}
+function moveDown(){rotate(1);moveLeft();rotate(3);}
+
+/* =========================
+   💬 Popups
+   ========================= */
+
+function showMemory(value){
+  if(!memories[value] || shown.has(value)) return;
+  shown.add(value);
+  modalOpen = true;
+
+  if (musicOn) music.volume = 0.15;
+
+  document.getElementById("memoryImg").src = memories[value].img;
+  document.getElementById("memoryText").textContent = memories[value].text;
+  document.getElementById("memoryModal").style.display = "flex";
+
+  if (value === 2048) {
+    setTimeout(() => {
+      document.getElementById("finalScreen").style.display = "flex";
+    }, 800);
+  }
+}
+
+function closeModal(){
+  modalOpen = false;
+  document.getElementById("memoryModal").style.display = "none";
+  if (musicOn) music.volume = 0.35;
+}
+
+/* =========================
+   ⌨️ Keyboard Controls
+   ========================= */
+
+document.addEventListener("keydown", e => {
+  if (modalOpen) return;
+  
+  let moved = false;
+  if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") {
+    moveLeft();
+    moved = true;
+  } else if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") {
+    moveRight();
+    moved = true;
+  } else if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") {
+    moveUp();
+    moved = true;
+  } else if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") {
+    moveDown();
+    moved = true;
+  }
+  
+  if (moved) {
+    e.preventDefault();
+    addTile();
+    drawBoard();
+  }
+});
+
+/* =========================
+   📱 Touch Controls
+   ========================= */
+
+let sx=0, sy=0;
+document.addEventListener("touchstart",e=>{
+  if(modalOpen) return;
+  sx=e.touches[0].clientX;
+  sy=e.touches[0].clientY;
+});
+
+document.addEventListener("touchend",e=>{
+  if(modalOpen) return;
+  let dx=e.changedTouches[0].clientX-sx;
+  let dy=e.changedTouches[0].clientY-sy;
+
+  if(Math.abs(dx)>Math.abs(dy)){
+    if(dx>30) moveRight();
+    else if(dx<-30) moveLeft();
+  } else {
+    if(dy>30) moveDown();
+    else if(dy<-30) moveUp();
+  }
+  addTile();
+  drawBoard();
+});
+
+/* =========================
+   🎵 Music Logic
+   ========================= */
+
+const music = document.getElementById("bgMusic");
+const musicBtn = document.getElementById("musicToggle");
+let musicOn = false;
+
+musicBtn.addEventListener("click", () => {
+  if (!musicOn) {
+    music.volume = 0.35;
+    music.play();
+    musicBtn.textContent = "🔊 Music On";
+  } else {
+    music.pause();
+    musicBtn.textContent = "🔈 Music";
+  }
+  musicOn = !musicOn;
+});
+
+/* =========================
+   🚀 Start Game
+   ========================= */
+
+addTile();
+addTile();
+drawBoard();
+</script>
+
+</body>
+</html>
